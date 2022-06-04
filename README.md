@@ -1,3 +1,4 @@
+
 # everblu-meters - Water usage data for Home Assistant
 Fetch water/gas usage data from Cyble EverBlu meters using RADIAN protocol on 433Mhz. Intergrated with Home Assistant via MQTT. 
 
@@ -13,8 +14,19 @@ The project runs on ESP8266/ESP32 with an RF transreciver (CC1101).
 
 ### Connections (ESP32/ESP8266 to CC1101):
 - See `cc1101.ccp` for SPI pins mapping.
-- See `everblu_meters.h` for GDOx pins mapping, CC1101 frequency and meter serial.
+- See `everblu_meters.h` for GDOx pins mapping.
 
+Pins wiring for [Wemos D1 board](https://www.wemos.cc/en/latest/d1/index.html) :
+|CC1101|Wemos|
+|--|--|
+|VCC|3V3|
+|GOD0 (GDO0) |D1|
+|CSN (SPI chip select) |D8|
+|SCK (SPI clock)|D5|
+|MOSI (SPI MOSI) |D7|
+|GOD1 (SPI MISO)|D6|
+|GOD2 (GDO2) |D2|
+|GND (ground)|G|
 
 ## Configuration
 1. Install EspMQTTClient through Arduino library manager as it required for MQTT
@@ -47,5 +59,3 @@ The license is unknown, citing one of the authors (fred):
 
 > I didn't put a license on this code maybe I should, I didn't know much about it in terms of licensing.
 > this code was made by "looking" at the radian protocol which is said to be open source earlier in the page, I don't know if that helps?
-
-
