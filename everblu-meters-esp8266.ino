@@ -1,3 +1,5 @@
+#include <ArduinoOTA.h>
+
 #include "everblu_meters.h"
 
 // Project source : 
@@ -46,10 +48,10 @@ void onUpdateData()
   struct tm *ptm = gmtime(&tnow);
   Serial.printf("Current date (UTC) : %04d/%02d/%02d %02d:%02d:%02d - %s\n", ptm->tm_year + 1900, ptm->tm_mon + 1, ptm->tm_mday, ptm->tm_hour, ptm->tm_min, ptm->tm_sec, String(tnow, DEC).c_str());
 
-  if (meter_data.reads_counter == 0 && meter_data.liters == 0) {
+  if (meter_data.reads_counter == 0 || meter_data.liters == 0) {
     Serial.println("Unable to retrieve data from meter. Retry later...");
-    // Call back this function in 1 hour (in miliseconds)
-    mqtt.executeDelayed(1000 * 60 * 60 * 1, onUpdateData);
+    // Call back this function in 10 min (in miliseconds)
+    mqtt.executeDelayed(1000 * 60 * 10, onUpdateData);
     return;
   }
 
@@ -134,15 +136,59 @@ void onConnectionEstablished()
 {
   Serial.println("Connected to MQTT Broker :)");
 
-  Serial.println("Configure time from NTP server.");
+  Serial.println("> Configure time from NTP server.");
   configTzTime("UTC0", "pool.ntp.org");
+
+
+
+
+  Serial.println("> Configure Arduino OTA flash.");
+  ArduinoOTA.onStart([]() {
+    String type;
+    if (ArduinoOTA.getCommand() == U_FLASH) {
+      type = "sketch";
+    }
+    else { // U_FS
+      type = "filesystem";
+    }
+    // NOTE: if updating FS this would be the place to unmount FS using FS.end()
+    Serial.println("Start updating " + type);
+  });
+  ArduinoOTA.onEnd([]() {
+    Serial.println("\nEnd updating.");
+  });
+  ArduinoOTA.onProgress([](unsigned int progress, unsigned int total) {
+    Serial.printf("%u%%\r\n", (progress / (total / 100)));
+  });
+  ArduinoOTA.onError([](ota_error_t error) {
+    Serial.printf("Error[%u]: ", error);
+    if (error == OTA_AUTH_ERROR) {
+      Serial.println("Auth Failed");
+    }
+    else if (error == OTA_BEGIN_ERROR) {
+      Serial.println("Begin Failed");
+    }
+    else if (error == OTA_CONNECT_ERROR) {
+      Serial.println("Connect Failed");
+    }
+    else if (error == OTA_RECEIVE_ERROR) {
+      Serial.println("Receive Failed");
+    }
+    else if (error == OTA_END_ERROR) {
+      Serial.println("End Failed");
+    }
+  });
+  ArduinoOTA.setHostname("EVERBLUREADER");
+  ArduinoOTA.begin();
 
   mqtt.subscribe("everblu/cyble/trigger", [](const String& message) {
     if (message.length() > 0)
       onUpdateData();
   });
 
-  Serial.println("Send MQTT config for HA.");
+
+
+  Serial.println("> Send MQTT config for HA.");
   // Auto discovery
   delay(50); // Do not remove
   mqtt.publish("homeassistant/sensor/water_meter_value/config", jsonDiscoveryDevice1, true);
@@ -203,4 +249,5 @@ void setup()
 void loop()
 {
   mqtt.loop(); 
+  ArduinoOTA.handle();
 }
