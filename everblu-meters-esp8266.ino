@@ -33,14 +33,12 @@ char *jsonTemplate =
 \"liters\": %d,       \
 \"counter\" : %d,     \
 \"battery\" : %d,     \
-\"timestamp\" : %ld   \
+\"timestamp\" : \"%s\"\
 }";
 
+int _retry = 0;
 void onUpdateData()
 {
-  // Call back this function in 24 hours (in miliseconds)
-  mqtt.executeDelayed(1000 * 60 * 60 * 24, onUpdateData);
-
   struct tmeter_data meter_data;
   meter_data = get_meter_data();
 
@@ -48,10 +46,16 @@ void onUpdateData()
   struct tm *ptm = gmtime(&tnow);
   Serial.printf("Current date (UTC) : %04d/%02d/%02d %02d:%02d:%02d - %s\n", ptm->tm_year + 1900, ptm->tm_mon + 1, ptm->tm_mday, ptm->tm_hour, ptm->tm_min, ptm->tm_sec, String(tnow, DEC).c_str());
 
+  char iso8601[128];
+  strftime(iso8601, sizeof iso8601, "%FT%TZ", gmtime(&tnow));
+
   if (meter_data.reads_counter == 0 || meter_data.liters == 0) {
     Serial.println("Unable to retrieve data from meter. Retry later...");
-    // Call back this function in 10 min (in miliseconds)
-    mqtt.executeDelayed(1000 * 60 * 10, onUpdateData);
+
+    // Call back this function in 10 sec (in miliseconds)
+    if (_retry++ < 10)
+      mqtt.executeDelayed(1000 * 10, onUpdateData);
+
     return;
   }
 
@@ -65,12 +69,39 @@ void onUpdateData()
   delay(50); // Do not remove
   mqtt.publish("everblu/cyble/battery", String(meter_data.battery_left, DEC), true);
   delay(50); // Do not remove
-  mqtt.publish("everblu/cyble/timestamp", String(tnow, DEC), true); // timestamp since epoch in UTC
+  mqtt.publish("everblu/cyble/timestamp", iso8601, true); // timestamp since epoch in UTC
   delay(50); // Do not remove
 
   char json[512];
-  sprintf(json, jsonTemplate, meter_data.liters, meter_data.reads_counter, meter_data.battery_left, tnow);
+  sprintf(json, jsonTemplate, meter_data.liters, meter_data.reads_counter, meter_data.battery_left, iso8601);
   mqtt.publish("everblu/cyble/json", json, true); // send all data as a json message
+}
+
+
+// This function calls onUpdateData() every days at 10:00am UTC
+void onScheduled()
+{
+  time_t tnow = time(nullptr);
+  struct tm *ptm = gmtime(&tnow);
+
+
+  // At 10:00:00am UTC
+  if (ptm->tm_hour == 10 && ptm->tm_min == 0 && ptm->tm_sec == 0) {
+
+    // Call back in 23 hours
+    mqtt.executeDelayed(1000 * 60 * 60 * 23, onScheduled);
+
+    Serial.println("It is time to update data from meter :)");
+
+    // Update data
+    _retry = 0;
+    onUpdateData();
+
+    return;
+  }
+
+  // Every 500 ms
+  mqtt.executeDelayed(500, onScheduled);
 }
 
 
@@ -132,6 +163,25 @@ String jsonDiscoveryDevice3(
   \"suggested_area\": \"Home\"}\
 }");
 
+String jsonDiscoveryDevice4(
+  "{ \
+  \"name\": \"Compteur Eau Timestamp\", \
+  \"unique_id\": \"water_meter_timestamp\",\
+  \"object_id\": \"water_meter_timestamp\",\
+  \"device_class\": \"timestamp\",\
+  \"icon\": \"mdi:clock\",\
+  \"qos\": \"0\",\
+  \"state_topic\": \"everblu/cyble/timestamp\",\
+  \"force_update\": \"true\",\
+  \"device\" : {\
+  \"identifiers\" : [\
+  \"14071984\" ],\
+  \"name\": \"Compteur Eau\",\
+  \"model\": \"Everblu Cyble ESP8266/ESP32\",\
+  \"manufacturer\": \"Psykokwak\",\
+  \"suggested_area\": \"Home\"}\
+}");
+
 void onConnectionEstablished()
 {
   Serial.println("Connected to MQTT Broker :)");
@@ -182,8 +232,13 @@ void onConnectionEstablished()
   ArduinoOTA.begin();
 
   mqtt.subscribe("everblu/cyble/trigger", [](const String& message) {
-    if (message.length() > 0)
+    if (message.length() > 0) {
+
+      Serial.println("Update data from meter from MQTT trigger");
+
+      _retry = 0;
       onUpdateData();
+    }
   });
 
 
@@ -197,8 +252,10 @@ void onConnectionEstablished()
   delay(50); // Do not remove
   mqtt.publish("homeassistant/sensor/water_meter_counter/config", jsonDiscoveryDevice3, true);
   delay(50); // Do not remove
+  mqtt.publish("homeassistant/sensor/water_meter_timestamp/config", jsonDiscoveryDevice4, true);
+  delay(50); // Do not remove
 
-  onUpdateData();
+  onScheduled();
 }
 
 void setup()
