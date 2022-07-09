@@ -44,7 +44,7 @@ Your transreciver module may be not calibrated correctly, please modify frequenc
 You can uncomment the part of the code in the `everblu-meters-esp8266.ino` file that scans all the frequencies around the meter frequency to find the correct one.
 
 ### Business hours
-Your meter may be configured in such a way that is listens for request only during hours when data collectors work - to conserve energy. If you are unable to communicate with the meter, please try again during business hours (8-16).
+Your meter may be configured in such a way that is listens for request only during hours when data collectors work - to conserve energy. If you are unable to communicate with the meter, please try again during business hours (8:00-16:00), Monday to Friday. As a rule of thumb, please try to set up your device only during business hours, then you can avoid confusion and asking questions why is it not working!  
 
 ### Serial number starting with 0
 Please ignore the leading 0, provide serial in configuration without it.
