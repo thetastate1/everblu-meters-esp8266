@@ -111,7 +111,10 @@ String jsonDiscoveryDevice1(
   \"unique_id\": \"water_meter_value\",\
   \"object_id\": \"water_meter_value\",\
   \"icon\": \"mdi:water\",\
-  \"unit_of_measurement\": \"Litres\",\
+  \"state\": \"{{ states(sensor.water_meter_value)|float / 1 }}\",\
+  \"unit_of_measurement\": \"L\",\
+  \"device_class\": \"water\",\
+  \"state_class\": \"total_increasing\",\
   \"qos\": \"0\",\
   \"state_topic\": \"everblu/cyble/liters\",\
   \"force_update\": \"true\",\
