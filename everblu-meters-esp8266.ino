@@ -19,11 +19,11 @@
 
 
 EspMQTTClient mqtt(
-  "MyESSID",            // Your Wifi SSID
-  "MyWiFiKey",          // Your WiFi key
-  "mqtt.server.com",    // MQTT Broker server ip
-  "MQTTUsername",       // Can be omitted if not needed
-  "MQTTPassword",       // Can be omitted if not needed
+  "MarKel",            // Your Wifi SSID
+  "snorlax1",          // Your WiFi key
+  "192.168.68.151",    // MQTT Broker server ip
+  //"MQTTUsername",       // Can be omitted if not needed
+  //"MQTTPassword",       // Can be omitted if not needed
   "EverblueCyble",      // Client name that uniquely identify your device
   1883                  // MQTT Broker server port
 );
